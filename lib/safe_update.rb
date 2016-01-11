@@ -1,13 +1,18 @@
 module SafeUpdate
+  def self.extended(arg)
+    ActiveRecord::Associations::Builder::BelongsTo
+      .send( :define_method, :valid_options) { super() + [:safe_update] }
+    puts "Extended! #{arg}"
+  end
+
   def belongs_to(name, options = {})
+    return_status = super(name, options)
+    
     if options[:safe_update]
-      options.except!(:safe_update)
-      return_val = super(name, options)
       belongs_to_generator(name)
-      return_val
-    else
-      super(name, options)
     end
+
+    return_status
   end
 
   private
@@ -18,7 +23,7 @@ module SafeUpdate
 
       attribute.instance_variable_set(:@_caller, self)
 
-      attribute.class.send(:define_method, :_update_record) do
+      attribute.define_singleton_method(:_update_record) do
         return(super()) if changes.empty?
 
         new_record = self.class.new(attributes)
